@@ -11,7 +11,7 @@ def clean_text(string):
     string_4 = re.sub('\n(?!\d{2} \d{2} \d{2} \d{2})',' ', string_3) #Remove a newline not followed by a timestamp.
     string_5 = re.sub('\n\d{2} \d{2} \d{2} \d{2} [A-Z]{2,3}\n','', string_4) #remove any  orphaned timestamps
     string_6 = string_5.replace('  ', ' ').replace(' .', '.').replace('- -', '').replace('....', '...') #Easier than dealing with . as a special char
-    string_7 = string_6.replace('--', '-').replace('***', '*').split('\n') # need to get rid of 1 line!
+    string_7 = string_6.replace('--', '-').split('\n') # need to get rid of 1 line!
 
     return string_7
 
@@ -32,8 +32,8 @@ def wrap_text(string):
     space_indexes = []
     lines =  []
     start = 0
-    step_init = 985
-    target = step_init + 6 #As spaces after words are considered target needs to be step + longest word
+    step_init = 984
+    target = step_init + 7 #As spaces after words are considered target needs to be step + 1/2 longest word
     step = step_init
 
     for i, letter in enumerate(string): #find all the spaces
@@ -72,24 +72,33 @@ def pad_text(text, target):
             line += i
     return line
 
-def draw_poster(poster_text, textsize):
+def draw_poster(poster_text, textsize, inp):
     '''split out and highlight the words'''
+    top_pad = 0.25
+    left_pad = 9
     font = ImageFont.truetype("NotCourierSans.otf", textsize) #This font needs to be monopaced!
-    im = Image.new("RGBA", (9922, 14036), "black") #A1 Size
+    im = Image.new("RGBA", (9933, 14043), "black") #A1 Size
     draw = ImageDraw.Draw(im) #Set up sheet to draw on
     for i, text in enumerate(poster_text):
         if "1969-07-21 02:56:48 CDR" in text:
             quote = "1969-07-21 02:56:48 CDR (TRANQ) That's one small step for man, one giant leap for mankind."
             text = text.split(quote)
-            print(text[0], '\n', text[1])
             width_p1, h1 = draw.textsize(text[0], font=font)
             width_quote, h2 = draw.textsize(quote, font=font)
-            draw.text((4, int((i + 3/8) * textsize)), text[0], font=font, fill=(255,255,255,255)) #All text padded 4 pixels left
-            draw.text((width_p1, int((i + 3/8) * textsize)), quote, font=font, fill=(255,0,0,255)) 
-            draw.text((width_p1 + width_quote, int((i + 3/8) * textsize)), text[1], font=font, fill=(255,255,255,255))
+            draw.text((left_pad, int((i + top_pad) * textsize)), text[0], font=font, fill=(255,255,255,255)) #All text padded 4 pixels left
+            draw.text((left_pad + width_p1, int((i + top_pad) * textsize)), quote, font=font, fill=(255,0,0,255)) 
+            draw.text((left_pad + width_p1 + width_quote, int((i + top_pad) * textsize)), text[1], font=font, fill=(255,255,255,255))
         else:
-            draw.text((4, int((i + 3/8) * textsize)), text, font=font, fill=(255,255,255,255))
-    im.save("output.png", "PNG")
+            draw.text((left_pad, int((i + top_pad) * textsize)), text, font=font, fill=(255,255,255,255))
+    
+    if inp == 'y':
+        bleedx, bleedy = 10004, 14114
+        bufferx, buffery = int((bleedx - 9933) / 2), int((bleedy - 14114) / 2)
+        bleed_im = Image.new("RGBA", (10004, 14114), "black") #Bleed area for printing
+        bleed_im.paste(im, (bufferx, buffery))
+        bleed_im.save("output.png", "PNG")
+    else:
+        im.save("output.png", "PNG")
 
 def output_text(text):
     with open('output.txt', 'w') as w:
@@ -99,6 +108,10 @@ def output_text(text):
 infile = open('apollo11.txt', 'r')
 launch_date = dt.datetime(1969, 7, 16, 13, 32, 0) # set the time to 16/07/1969 13:32 UTC
 textsize = 16
+
+inp = ' '
+while inp.lower() not in ['y', 'n']:
+    inp = input('Would you like a bleed area? (Y/N): ').lower()
 
 infile = infile.read()
 print('Read infile')
@@ -110,5 +123,5 @@ wrapped_outstr = wrap_text(outstr)
 print('Cut text into lines')
 output_text(wrapped_outstr)
 print('Saved text')
-draw_poster(wrapped_outstr, textsize)
+draw_poster(wrapped_outstr, textsize, inp)
 print('Poster finished!')
