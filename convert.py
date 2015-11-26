@@ -1,6 +1,7 @@
 ﻿import re
 import datetime as dt
 import random
+from progress.bar import Bar
 from PIL import Image, ImageFont, ImageDraw
 
 def clean_text(string):
@@ -11,7 +12,7 @@ def clean_text(string):
     string_4 = re.sub('\n(?!\d{2} \d{2} \d{2} \d{2})',' ', string_3) #Remove a newline not followed by a timestamp.
     string_5 = re.sub('\n\d{2} \d{2} \d{2} \d{2} [A-Z]{2,3}\n','', string_4) #remove any  orphaned timestamps
     string_6 = string_5.replace('  ', ' ').replace(' .', '.').replace('- -', '').replace('....', '...') #Easier than dealing with . as a special char
-    string_7 = string_6.replace('--', '-').split('\n') # need to get rid of 1 line!
+    string_7 = string_6.split('\n') # need to get rid of 1 line!
 
     return string_7
 
@@ -57,7 +58,10 @@ def wrap_text(string):
         line = pad_text(line, target)
         lines.append(line) #make a list of uniform length lines
         start, step = start + step + 1, step_init #step + 1 to remove the preceding space
-    lines.append(string[start:]) #add whatever is left over in the string 
+    final = string[start:].rstrip() #add whatever is left over in the string 
+    for i in range(5):
+        final = pad_text(final, target) #Try and make the last line the same length
+    lines.append(final)
     return lines
 
 def pad_text(text, target):
@@ -79,6 +83,10 @@ def draw_poster(poster_text, textsize, inp):
     font = ImageFont.truetype("NotCourierSans.otf", textsize) #This font needs to be monopaced!
     im = Image.new("RGBA", (9933, 14043), "black") #A1 Size
     draw = ImageDraw.Draw(im) #Set up sheet to draw on
+    
+    print('Drawing text')
+    bar = Bar('Processing', max=len(poster_text)) #Progress bar to entertain me while I watch this run
+    
     for i, text in enumerate(poster_text):
         if "1969-07-21 02:56:48 CDR" in text:
             quote = "1969-07-21 02:56:48 CDR (TRANQ) That's one small step for man, one giant leap for mankind."
@@ -88,12 +96,16 @@ def draw_poster(poster_text, textsize, inp):
             draw.text((left_pad, int((i + top_pad) * textsize)), text[0], font=font, fill=(255,255,255,255)) #All text padded 4 pixels left
             draw.text((left_pad + width_p1, int((i + top_pad) * textsize)), quote, font=font, fill=(255,0,0,255)) 
             draw.text((left_pad + width_p1 + width_quote, int((i + top_pad) * textsize)), text[1], font=font, fill=(255,255,255,255))
+            bar.next()
         else:
             draw.text((left_pad, int((i + top_pad) * textsize)), text, font=font, fill=(255,255,255,255))
+            bar.next()
+    bar.finish()
     
+    print('Saving image!')    
     if inp == 'y':
         bleedx, bleedy = 10004, 14114
-        bufferx, buffery = int((bleedx - 9933) / 2), int((bleedy - 14114) / 2)
+        bufferx, buffery = int((bleedx - 9933) / 2), int((bleedy - 14043) / 2)
         bleed_im = Image.new("RGBA", (10004, 14114), "black") #Bleed area for printing
         bleed_im.paste(im, (bufferx, buffery))
         bleed_im.save("output.png", "PNG")
